@@ -41,12 +41,12 @@ typedef struct _options_t {
 static options_t options;
 
 typedef struct _feature_t {
-   char seq_id[SEQ_ID];
+   char seq_id[SEQ_ID]; // chrom
    char *ft;
    char ft_str;
    char **name;
-   int *pos;
-   int *cnt;
+   int *pos;            // position
+   int *cnt;            // read count
    int *npo;
    int *nct;
    int *ptr;
@@ -56,10 +56,10 @@ feature_t ref_ft;
 int strand_flag = 0;
 
 char *Feature = NULL;
-int Win1 = 0;
-int Win2 = 0;
-int Thres = 100;
-int Coff = 10;
+int Win1 = 0; // window
+int Win2 = 0; // vicinity
+int Thres = 100; // threshold
+int Coff = 10; // cutoff
 
 void
 locate_peaks(int len)
@@ -219,6 +219,8 @@ process_sga(char *iFile)
             iFile, strerror(errno), errno);
     return 1;
   }
+  // `ref_ft` is a `feature_t` struct
+  // Allocate memory for all its elements
   if (( ref_ft.pos = (int*)calloc(mLen, sizeof(int))) == NULL) {
     perror("process_sga: malloc");
     exit(1);
@@ -255,18 +257,22 @@ process_sga(char *iFile)
   int c = 1;
 #endif
 /*
+  // Equivalent to
   while (fscanf(f,"%s %s %d %c %d", seq_id, ft, &pos, &strand, &cnt) != EOF) {
   */
   while ((res = fgets(s, (int) bLen, f)) != NULL) {
-    size_t cLen = strlen(s);
-    char seq_id[SEQ_ID] = "";
-    char ft[FT_MAX] = "";
-    char position[POS_MAX] = "";
-    char count[CNT_MAX] = "";
-    char ext[EXT_MAX] = "";
-    char strand = '\0';
+    // `s` is either the whole next line, of a string of length `bLen`
+    // `res` is useless (?)
+    size_t cLen = strlen(s);     // length of the current line
+    char seq_id[SEQ_ID] = "";    // chromosome
+    char ft[FT_MAX] = "";        // feature name
+    char position[POS_MAX] = ""; // position
+    char count[CNT_MAX] = "";    // count
+    char ext[EXT_MAX] = "";      // ?
+    char strand = '\0';          // strand
     unsigned int i = 0;
 
+    // While bLen is not enough to capture the whole line, allocate more memory
     while (cLen + 1 == bLen && s[cLen - 1] != '\n') {
       bLen *= 2;
       if ((s = realloc(s, bLen)) == NULL) {
@@ -276,20 +282,22 @@ process_sga(char *iFile)
       res = fgets(s + cLen, (int) (bLen - cLen), f);
       cLen = strlen(s);
     }
+    // Make the string valid (?)
     if (s[cLen - 1] == '\n')
       s[cLen - 1] = 0;
 
-    buf = s;
+    buf = s; // same pointer, intended to `strcopy`?
     /* Get SGA fields */
     /* SEQ ID */
     while (*buf != 0 && !isspace(*buf)) {
+      // Store in `seq_id` all chars of `s` as long as they are neither space-like or \0
       if (i >= SEQ_ID) {
         fprintf(stderr, "Seq ID is too long \"%s\" \n", buf);
         exit(1);
       }
       seq_id[i++] = *buf++;
     }
-    while (isspace(*buf))
+    while (isspace(*buf)) // escape empty spaces
       buf++;
     /* FEATURE */
     i = 0;
@@ -345,8 +353,9 @@ process_sga(char *iFile)
 #ifdef DEBUG
     printf(" [%d] seq ID: %s   Feat: %s (%c)  Pos: %d  Cnts: %d Ext: %s\n", c++, seq_id, ft, strand, pos, cnt, ext);
 #endif
+    // More f...ing memory allocation tests
     if (k >= mLen - 1) {
-      mLen *= 2;
+      mLen *= 2; // double buffer size if necessary, then reallocate `ref_ft` slots
 #ifdef DEBUG
       fprintf(stderr, "reallocating memory for ref_ft.pos ref_ft.strand ref_ft.cnt (k=%d, size=%d)\n", j, mLen);
 #endif
@@ -365,23 +374,29 @@ process_sga(char *iFile)
         }
       }
     }
+
     /* Check Chromosome BEGINNING, process previous signal peaks and printout results*/
+    // `ref_ft` is a `feature_t` struct
+    // If chromosome changes
     if (strcmp(seq_id, seq_id_prev) != 0) {
       ref_ft.pos[0] = ref_ft.pos[1] - Win1/2 - 1;
       ref_ft.pos[k + 1] = ref_ft.pos[k] + Win1/2 + 1;
+      //===== MAIN CALL ====//
       locate_peaks((int)k);
-      strcpy(seq_id_prev, seq_id);
+      //==== \MAIN CALL ====//
+      strcpy(seq_id_prev, seq_id); // the current id becomes the previous
       k = 0;
     }
+    // ?
     if (ref_ft.ft == NULL) {
         k++;
         strcpy(ref_ft.seq_id, seq_id);
-    ref_ft.name[k] = malloc(strlen(ft) + 1);
+        ref_ft.name[k] = malloc(strlen(ft) + 1);
         strcpy(ref_ft.name[k], ft);
         ref_ft.pos[k] = pos;
-    if (cnt > Coff)
-        ref_ft.cnt[k] = Coff;
-    else
+        if (cnt > Coff)
+            ref_ft.cnt[k] = Coff;
+        else
             ref_ft.cnt[k] = cnt;
     } else if (ref_ft.ft_str == '\0') {
       if (strcmp(ft, ref_ft.ft) == 0) {
@@ -389,31 +404,31 @@ process_sga(char *iFile)
         strcpy(ref_ft.seq_id, seq_id);
         strcpy(ref_ft.ft, ft);
         ref_ft.pos[k] = pos;
-    if (cnt > Coff)
-        ref_ft.cnt[k] = Coff;
-    else
+        if (cnt > Coff)
+            ref_ft.cnt[k] = Coff;
+        else
             ref_ft.cnt[k] = cnt;
-      }
+        }
     } else if (strand_flag == 1) {
       if (strand == ref_ft.ft_str) {
         k++;
         strcpy(ref_ft.seq_id, seq_id);
         strcpy(ref_ft.ft, ft);
         ref_ft.pos[k] = pos;
-    if (cnt > Coff)
-        ref_ft.cnt[k] = Coff;
-    else
+        if (cnt > Coff)
+            ref_ft.cnt[k] = Coff;
+        else
             ref_ft.cnt[k] = cnt;
-      }
+        }
     } else {
       if (strcmp(ft, ref_ft.ft) == 0  && strand == ref_ft.ft_str) {
         k++;
         strcpy(ref_ft.seq_id, seq_id);
         strcpy(ref_ft.ft, ft);
         ref_ft.pos[k] = pos;
-    if (cnt > Coff)
-        ref_ft.cnt[k] = Coff;
-    else
+        if (cnt > Coff)
+            ref_ft.cnt[k] = Coff;
+        else
             ref_ft.cnt[k] = cnt;
       }
     }
@@ -421,7 +436,9 @@ process_sga(char *iFile)
   /* Locate signal peaks for the last chromosome */
   ref_ft.pos[0] = ref_ft.pos[1] - Win1/2 - 1;
   ref_ft.pos[k + 1] = ref_ft.pos[k] + Win1/2 + 1;
+  //===== MAIN CALL ====//
   locate_peaks((int)k);
+  //==== \MAIN CALL ====//
   fclose(f);
   return 0;
 }
@@ -470,7 +487,7 @@ main(int argc, char *argv[])
   if (optind == argc || options.help == 1 || Win1 == 0 || Win2 == 0 ) {
     fprintf(stderr, "Usage: %s [options] -f <feature name> -w <window> -v <vicinity> <SGA File>\n"
              "      where options are:\n"
-         "  \t\t -h     Show this stuff\n"
+         "  \t\t -h     Show this message\n"
          "  \t\t -d     Produce debugging output\n"
          "  \t\t -r     Refine Peak Positions\n"
          "  \t\t -c     Count Cut-off (default is %d)\n"
