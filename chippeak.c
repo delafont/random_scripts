@@ -51,6 +51,8 @@ int Win2 = 0;    // vicinity
 int Thres = 100; // threshold
 int Coff = 10;   // cutoff
 
+void (*write_format)(FILE*, char*, char*, int, int) = NULL;
+int  (*parse)(FILE*, char*, size_t, char*, int*, int*, char*, char*, int*, int*) = NULL;
 
 
 void write_sga(FILE* out, char* seq_id, char* ft, int npo_i, int nct_i){
@@ -62,13 +64,6 @@ void write_bed(FILE* out, char* seq_id, char* ft, int npo_i, int nct_i){
 void print_max_positions(int* lm, int j){
     unsigned long long sum = 0;
     int cnts = 0;
-    void (*write_format)(FILE*, char*, char*, int, int) = NULL;
-
-    if (strcmp(Format,"bed") == 0){
-        write_format = &write_bed;
-    } else if (strcmp(Format,"sga") == 0){
-        write_format = &write_sga;
-    }
 
     for (int i = 1; i <= j; i++) {
         if (options.debug) {
@@ -129,8 +124,7 @@ void print_max_positions(int* lm, int j){
 
 
 
-void
-locate_peaks(int len)
+void locate_peaks(int len)
 {
   /* Compute sum in window Win1; store high values in shorter arrays (npo, nct) */
   unsigned long long sum = 0;   // Total number of reads in the window
@@ -486,15 +480,6 @@ int process_sga(char *iFile)
   char ft[FT_MAX] = "";        // feature name
   char strand = '\0';
   unsigned int k = 0;
-  int (*parse)(FILE*, char*, size_t, char*, int*, int*, char*, char*, int*, int*) = NULL;
-
-  // Choose the right parser accoring to the Format option (-x)
-  if (strcmp(Format,"bed") == 0){
-    parse = &parse_bed;
-  } else if (strcmp(Format,"sga") == 0){
-    parse = &parse_sga;
-  }
-
 
   // while (fscanf(f,"%s %s %d %c %d", seq_id, ft, &pos, &strand, &cnt) != EOF) {
   while ((res = fgets(s, (int) bLen, f)) != NULL) {
@@ -601,8 +586,8 @@ int process_sga(char *iFile)
 }
 
 
-int
-main(int argc, char *argv[])
+
+int main(int argc, char *argv[])
 {
 //#ifdef DEBUG
 //  mcheck(NULL);
@@ -648,7 +633,8 @@ main(int argc, char *argv[])
 
   #ifdef DEBUG
     argc = 2;
-    argv[1] = "/Users/julien/Documents/Synced documents/Programming/C/chippeak/chippeak2/test.bed";
+    //argv[1] = "/Users/julien/Documents/Synced documents/Programming/C/chippeak/chippeak2/test.bed";
+    argv[1] = "../../../test.bed";
     int x=0;
     for (x = 0; x < argc; ++x)
       printf ("Argument %d : %s\n", x + 1, argv[x]);
@@ -668,6 +654,7 @@ main(int argc, char *argv[])
             "  \t\t -r     Refine Peak Positions\n"
             "  \t\t -c     Count Cut-off (default is %d)\n"
             "  \t\t -t     Peak Threshold (default is %d)\n"
+            "  \t\t -x     Input/Output format (default is SGA)\n"
             "\n\tLocates signal peaks within SGA files.\n"
             "\n\tThe program reads a ChIP-seq data file in SGA format (<SGA File>),\n"
             "\tand detects signal peaks for ChIP-tag positions corresponding to\n"
@@ -721,6 +708,18 @@ main(int argc, char *argv[])
     strand_flag = 1;
     if (options.debug)
       fprintf(stderr, "Feature Specs: Process all features on str : %c\n", ref_ft.ft_str);
+  }
+  // Input format
+  if (strcmp(Format,"bed") == 0){
+    parse = &parse_bed;
+  } else if (strcmp(Format,"sga") == 0){
+    parse = &parse_sga;
+  }
+  // Output format
+  if (strcmp(Format,"bed") == 0){
+    write_format = &write_bed;
+  } else if (strcmp(Format,"sga") == 0){
+    write_format = &write_sga;
   }
   if (process_sga(argv[optind++]) != 0) {
     return 1;
