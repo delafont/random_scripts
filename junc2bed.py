@@ -1,6 +1,6 @@
-from bbcflib.btrack import track
-from bbcflib.bFlatMajor.common import *
-from bbcflib.bFlatMajor.stream import concatenate
+from bbcflib.track import track
+from bbcflib.gfminer.common import *
+from bbcflib.gfminer.stream import concatenate
 import itertools
 import os,sys
 

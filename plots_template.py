@@ -1,5 +1,5 @@
-from bbcflib.btrack import track
-from bbcflib.bFlatMajor.common import unroll
+from bbcflib.track import track
+from bbcflib.gfminer.common import unroll
 import numpy
 from matplotlib.patches import Rectangle
 import matplotlib.pyplot as plt
