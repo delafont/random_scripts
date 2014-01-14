@@ -18,8 +18,14 @@ abline(v=c(mu+sigma,mu-sigma),col='blue',lty=2)
 ## With mixtools ##
 ###################
 
+# http://cran.r-project.org/web/packages/mixtools/mixtools.pdf
+
 library(mixtools)
 mixmdl = normalmixEM(data)
+
+mixdml$mu
+mixdml$sigma
+mixdml$loglik
+
 plot(mixmdl,which=2)
 lines(density(data), lty=2, lwd=2)
-
