@@ -26,4 +26,4 @@ Winston.display(p)
 
 # Gadfly graphics
 pl = plot(x=obs, Geom.point)
-draw(draw(PNG("myplot.svg"), pl))
+draw(PNG("myplot.svg"), pl)
