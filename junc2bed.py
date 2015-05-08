@@ -4,7 +4,8 @@ from bbcflib.gfminer.stream import concatenate
 import itertools
 import os,sys
 
-"""junc2bed <filename> <assembly>"""
+"""junc2bed <filename> <assembly>
+Transforms .junc files from SOAPsplice to BED format."""
 
 def main():
     filename = sys.argv[1]
