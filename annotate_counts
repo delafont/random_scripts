@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+
+"""Adds genomic annotation to a file consisting of two columns, the first one being the
+genes/transcripts/exons IDs.
+
+Usage:
+   annotate_counts  [-t TYPE] ASSEMBLY COUNTS [-h]
+
+Options:
+   -t TYPE, --type TYPE   Feature type, can be 'genes', 'exons' or 'transcripts' [default: genes].
+   -h, --help             Displays usage information and exits.
+"""
+
+import os,sys
+from bbcflib.genrep import Assembly
+
+def main(assembly, counts, type):
+    a = Assembly(assembly)
+    if type == 'genes':
+        gmap = a.get_gene_mapping()
+    elif type == 'transcripts':
+        gmap = a.get_transcript_mapping()
+    elif type == 'exons':
+        gmap = a.get_exon_mapping()
+    else: raise ValueError("TYPE must be one of 'genes', 'transcripts' or 'exons'.")
+
+    base,ext = os.path.splitext(counts)
+    outname = base+'_annot'+ext
+    with open(outname,"wb") as g:
+        with open(counts) as f:
+            for line in f:
+                if line[0] == '#':
+                    g.write(line)
+                L = line.split()
+                gid = L[0]
+                count = L[1]
+                gene = gmap.get(gid)
+                if gene is not None:
+                    info = map(str, [gene.id,count,gene.chrom,gene.start,gene.end,gene.strand,gene.gene_name])
+                    g.write('\t'.join(info)+'\n')
+
+
+from docopt import docopt
+if __name__ == '__main__':
+    args = docopt(__doc__, version='0.1')
+    main(args['ASSEMBLY'], args['COUNTS'], type=args['--type'])
+
+
+

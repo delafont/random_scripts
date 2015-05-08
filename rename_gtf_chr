@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+
+"""
+Change chromosome names from UCSC (ex. 'X', '1', 'GL456350.1')
+to Ensembl (ex. 'chrX', 'chr1', <skip>)
+
+Usage: rename_gtf_chr ASSEMBLY GTF ...
+"""
+
+import os
+import urllib2, json
+from bbcflib.genrep import Assembly
+
+def main(assembly_name, gtfs):
+    try: assembly = Assembly(assembly_name)
+    except:
+        raise ValueError("\nUnknown assembly name: %s" % assembly_name)
+
+    for gtf in gtfs:
+        assert os.path.exists(gtf)
+        gtf_renamed = os.path.splitext(gtf)[0]+'_renamed.gtf'
+        chromosomes = ','.join(assembly.chrmeta.keys())
+        url = os.path.join(assembly.genrep.url,
+                  "chromosomes/get_mapping.json?identifier=%s" % chromosomes \
+                + "&assembly_name=%s&source_name=Ensembl" % assembly.name)
+        request = urllib2.Request(url)
+        chrom_json = json.load(urllib2.urlopen(request))
+        chrom_mapping = dict((v['chr_name'][0],k) for k,v in chrom_json.iteritems())
+        chroms = set()
+        with open(gtf) as f:
+            with open(gtf_renamed,"wb") as g:
+                for line in f:
+                    L = line.strip().split('\t')
+                    chrom = chrom_mapping.get(L[0])
+                    if chrom is None:
+                        if L[0] not in chroms:
+                            print "Equivalent UCSC name for Ensembl %s not found in GenRep" % L[0]
+                        chroms.add(L[0])
+                        continue
+                    chroms.add(L[0])
+                    g.write('\t'.join([chrom]+L[1:])+'\n')
+        gtf = gtf_renamed
+
+
+
+from docopt import docopt
+
+if __name__ == '__main__':
+    args = docopt(__doc__)
+    print args
+    main(args["ASSEMBLY"], args["GTF"])

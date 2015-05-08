@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+
+"""
+Change
+>3076_NC_000002.11 gi|224589811|ref|NC_000002.11| ...
+to
+>chr1
+in the specified fasta file, usually coming from GenRep in that shitty form.
+Adds a "_renamed" suffix before the extension.
+
+Usage: rename_fasta_chr <fasta> <assembly_name>
+"""
+
+import os,sys
+from bbcflib.genrep import Assembly
+
+args = sys.argv
+assert len(args)>=3, "Usage: rename_fasta_chr <fasta> <assembly_name>"
+
+fasta = args[1]
+assembly = args[2]
+
+a = Assembly(assembly)
+idtoname = dict((v['ac'],k) for k,v in a.chrmeta.iteritems())
+
+base,ext = os.path.splitext(fasta)
+outname = base+'_renamed'+ext
+with open(outname,"wb") as g:
+    with open(fasta) as f:
+        for line in f:
+            if line[0] == '>':
+                chrid = line.split()[0][1:]
+                chrname = idtoname[chrid]
+                g.write('>'+chrname+'\n')
+            else:
+                g.write(line)
